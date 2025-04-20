@@ -21,29 +21,47 @@
 
     <section>
       <h2>Original Artifact</h2>
-      <p>[Explain what the original software did and how it was designed]</p>
+      <p>
+        The artifact I selected for enhancement is the Inventory Management Application I originally developed in October 2024. The application was created to streamline inventory tracking for a variety of use cases. While functional, the initial version relied on a local SQLite database with basic CRUD operations and lacked real-time capabilities or cloud connectivity. Because of this limitation, it was not suitable for real-world or commercial deployment, especially in scenarios requiring multiple devices or users accessing shared inventory data.
+      </p>
+      <p>
+        This original implementation served as a solid foundation, but its reliance on local-only data made it a strong candidate for enhancement. Given that I built the entire system independently and with minimal instructor guidance, I believed it was the best example to showcase my growth and technical abilities.
+      </p>
     </section>
-
+    
     <section>
       <h2>Enhancements Made</h2>
-      <p>[Describe your improvements: refactoring, modularization, documentation, etc.]</p>
+      <p>
+        The most significant enhancement I made was migrating the application’s storage system from a local SQLite database to a cloud-based Firestore database through Firebase. This transformation fundamentally improved the application's scalability, enabling multiple users and devices to interact with a shared dataset in real time. The enhancement involved replacing the original <code>DatabaseHelper.java</code> class with a new cloud-integrated repository class called <code>FirestoreInventoryRepository.java</code>.
+      </p>
+      <p>
+        This new class streamlined inventory management through centralized, cloud-based data handling. One of the standout features is the <code>listenToItems()</code> method, which leverages Firestore’s <code>addSnapshotListener</code> to sync live updates to inventory data. Unlike the previous SQLite-based approach—which would have required custom polling mechanisms or broadcast receivers—Firestore provides real-time data synchronization out of the box.
+      </p>
+      <p>
+        Firestore’s additional benefits also strengthened the application’s architecture. Its built-in security rules eliminated the need to write extensive authentication and access control logic. Additionally, Firestore’s offline caching allows users to interact with data even without an active internet connection, making the application more robust and user-friendly.
+      </p>
     </section>
-
+    
     <section>
       <h2>Skills Demonstrated</h2>
       <ul>
-        <li>[e.g., Object-Oriented Programming]</li>
-        <li>[e.g., Version Control with Git]</li>
+        <li>Refactoring legacy software to use modern cloud-based architectures</li>
+        <li>Firebase Firestore integration for scalable real-time data handling</li>
+        <li>Object-oriented design and modular class structure implementation</li>
+        <li>Application of external libraries to simplify complex functionality</li>
+        <li>Planning and executing a major software redesign</li>
       </ul>
     </section>
-
+    
     <section>
       <h2>Course Outcomes Met</h2>
       <ul>
-        <li>[Outcome 1: Description]</li>
-        <li>[Outcome 2: Description]</li>
+        <li>Design and develop software solutions using a variety of tools and technologies</li>
+        <li>Employ software engineering lifecycle processes to plan, design, implement, and evaluate software systems</li>
+        <li>Demonstrate the ability to refactor code to improve design, structure, and maintainability</li>
       </ul>
     </section>
+    
   </main>
 </body>
 </html>
