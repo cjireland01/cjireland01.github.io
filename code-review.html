@@ -45,17 +45,14 @@
 
     <section>
       <h2>Existing Functionality</h2>
-      <p>[Describe how your original code worked before any enhancements]</p>
-    </section>
-
-    <section>
-      <h2>Code Analysis</h2>
-      <p>[Mention inefficiencies, lack of comments, areas to improve, etc.]</p>
+      <p>Prior to the code adjustment, this application only worked for a single device. Multiple accounts were possible, but networking was not. This severely limited its use in commercial settings. This is primarily due to the use of SQLite as opposed to a cloud-based database.</p>
+      <p>This also struggled due to poorly optimized querying systems with overly complicated code.</p>
     </section>
 
     <section>
       <h2>Planned Enhancements</h2>
-      <p>[Explain what you changed, why you did it, and how it meets course outcomes]</p>
+      <p>The code was changed to utilize Google's Firestore Firebase and authentication services with a focus on multiple locations. Sharding of the database and usage of Firestore's libraries enabled the source code to be much cleaner and more maintainable.</p>
+      <p>This change also allowed for administrative users, 3rd party authentication and account recovery, hundreds of networked devices and accounts, per-user inventory warning notifications, etc.</p>
     </section>
   </main>
 </body>
