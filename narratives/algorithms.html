@@ -19,28 +19,45 @@
 
     <section>
       <h2>Original Artifact</h2>
-      <p>[Describe the original project: what algorithm or data structure it used]</p>
+      <p>
+        The artifact selected for enhancement in this section is again my Inventory Management Application, originally developed in October 2024. This application was designed to improve efficiency and consistency in inventory tracking, particularly for small businesses managing warehouse stock. The initial version served as a proof of concept but lacked practical functionality. Specifically, it did not effectively leverage efficient data structures or sorting algorithms, limiting its usability for real-world scenarios where data manipulation and quick access are essential.
+      </p>
     </section>
 
+    <p>
+      View the <a href="../artifacts/original/InventoryActivity.java">original unsorted inventory activity</a> and the <a href="../artifacts/enhanced/InventoryActivity.java">enhanced version with TimSort-based sorting</a>.
+    </p>
+    
     <section>
       <h2>Enhancements</h2>
-      <p>[Explain the changes made: e.g., optimized loop, added hash map, etc.]</p>
+      <p>
+        The updated version of this application now includes more advanced data handling capabilities, made possible by the integration of Firebase as a backend and Java's built-in sorting mechanisms. Firebase allowed for clean and structured storage of inventory data, which could then be efficiently sorted and filtered on the client side. One of the core improvements was the use of Java’s <code>Collections.sort()</code> method, which internally uses the highly efficient <strong>TimSort</strong> algorithm — a hybrid of MergeSort and InsertionSort.
+      </p>
+      <p>
+        TimSort provides excellent performance characteristics, with a worst-case time complexity of O(n log n) and a best case of O(n) when the data is already partially sorted. This change enabled the application to sort inventory by fields such as quantity, name, and date, all without manual implementation of complex sorting algorithms. This enhancement significantly increased the responsiveness and scalability of the application while keeping the code maintainable and clean.
+      </p>
     </section>
-
+    
     <section>
       <h2>Skills Demonstrated</h2>
       <ul>
-        <li>[Example: Sorting algorithms]</li>
-        <li>[Example: Big-O analysis]</li>
+        <li>Use of efficient, built-in sorting algorithms (TimSort via <code>Collections.sort()</code>)</li>
+        <li>Application of data structures like lists and hash maps to manage and organize inventory</li>
+        <li>Integration of external libraries (Firebase) to streamline data storage and retrieval</li>
+        <li>Refinement of program structure to support dynamic filtering and sorting of data</li>
+        <li>Understanding and leveraging algorithm complexity in practical software development</li>
       </ul>
     </section>
-
+    
     <section>
-      <h2>Course Outcomes</h2>
+      <h2>Course Outcomes Met</h2>
       <ul>
-        <li>[e.g., "Design and evaluate solutions to computational problems"]</li>
+        <li>Apply algorithms and data structures appropriately to solve computational problems</li>
+        <li>Analyze the time and space complexity of algorithms to evaluate performance</li>
+        <li>Implement appropriate sorting and filtering mechanisms based on application needs</li>
       </ul>
     </section>
+    
   </main>
 </body>
 </html>
