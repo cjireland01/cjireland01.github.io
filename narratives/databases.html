@@ -20,29 +20,46 @@
 
     <section>
       <h2>Original Artifact</h2>
-      <p>[Describe your original DB usage and how you improved it]</p>
+      <p>
+        The artifact selected for enhancement in this section remains the Inventory Management Application originally developed in October 2024. The initial implementation used a local SQLite database that could only store data on a single device. It did not support synchronization across multiple devices, lacked user authentication, and could not be used in environments with more than one warehouse or team member. This severely limited its real-world viability for businesses needing centralized or collaborative access.
+      </p>
     </section>
 
+    <p>
+      View the <a href="../artifacts/original/DatabaseHelper.java">original SQLite implementation</a> and the <a href="../artifacts/enhanced/FirestoreInventoryRepository.java">enhanced Firestore-based database system</a>.
+    </p>
+    
+    
     <section>
-      <h2>Enhancements Made</h2>
-      <p>[Describe your improvements: refactoring, modularization, documentation, etc.]</p>
+      <h2>Enhancements</h2>
+      <p>
+        To address these limitations, I replaced the SQLite implementation with Firebase's Firestore cloud database. This transition introduced multi-device data synchronization, real-time updates, and support for user authentication and permission-based access. The system now supports sharding by location, allowing inventory to be stored and managed separately for each warehouse while still being visible to authorized users with administrative roles. This design allows each warehouse to operate independently while preserving centralized visibility and control for authorized personnel.
+      </p>
+      <p>
+        Firestore’s built-in user authentication system also eliminated the need for manual user handling in the app’s code. User credentials, access control, and secure password management are handled through Firebase Authentication, which stores passwords in an encrypted format. This significantly improves security and reduces the code complexity within the app. Overall, this enhancement transformed the application into a scalable, flexible, and commercially viable solution for distributed inventory management.
+      </p>
     </section>
-
+    
     <section>
       <h2>Skills Demonstrated</h2>
       <ul>
-        <li>[e.g., Object-Oriented Programming]</li>
-        <li>[e.g., Version Control with Git]</li>
+        <li>Integration of Firebase Firestore as a scalable cloud-based NoSQL database</li>
+        <li>Implementation of user authentication using Firebase Authentication</li>
+        <li>Design of multi-location database sharding for scalable inventory management</li>
+        <li>Real-time synchronization and live data updates using Firestore listeners</li>
+        <li>Security-conscious application design by offloading user credential management</li>
       </ul>
     </section>
-
+    
     <section>
       <h2>Course Outcomes Met</h2>
       <ul>
-        <li>[Outcome 1: Description]</li>
-        <li>[Outcome 2: Description]</li>
+        <li>Design and implement scalable database systems to support software solutions</li>
+        <li>Integrate cloud-based services and database solutions into modern software applications</li>
+        <li>Apply best practices for database security and user authentication</li>
       </ul>
     </section>
+    
   </main>
 </body>
 </html>
