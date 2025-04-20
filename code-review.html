@@ -10,14 +10,19 @@
   <script>hljs.highlightAll();</script>
 </head>
 <body>
-  <nav>
-    <a href="index.html">Home</a> |
-    <a href="code-review.html">Code Review</a> |
-    <a href="narratives/design.html">Design</a> |
-    <a href="narratives/algorithms.html">Algorithms</a> |
-    <a href="narratives/databases.html">Databases</a>
-    <a href="artifacts.html">Artifacts</a>
-  </nav>
+  <div id="navbar"></div>
+    <script>
+      fetch("components/navbar.html")
+        .then(res => res.text())
+        .then(data => document.getElementById("navbar").innerHTML = data);
+    </script>
+
+  <div id="github-link"></div>
+    <script>
+    fetch("components/github-link.html")
+        .then(res => res.text())
+        .then(data => document.getElementById("github-link").innerHTML = data);
+    </script>
 
   <main>
     <h1>Code Review</h1>
