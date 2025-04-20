@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Code Artifacts</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs2015.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/java.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html">Home</a> |
+    <a href="code-review.html">Code Review</a> |
+    <a href="narratives/design.html">Design</a> |
+    <a href="narratives/algorithms.html">Algorithms</a> |
+    <a href="narratives/databases.html">Databases</a> |
+    <a href="artifacts.html">Artifacts</a>
+  </nav>
+
+  <h1>Code Artifacts</h1>
+
+  <section>
+    <h2>Original: DatabaseHelper.java</h2>
+    <pre><code class="language-java">
+        package com.example.projectthree;
+
+import android.annotation.SuppressLint;
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+
+import android.telephony.SmsManager;
+import android.util.Log;
+
+
+public class DatabaseHelper extends SQLiteOpenHelper { // Database Manager for use with SQLite DB.
+
+    private static final String DATABASE_NAME = "InventoryManager.db"; // Sets database name within files.
+    private static final int DATABASE_VERSION = 1; // Sets version, for possible future update checks.
+
+    private static final String USER_TABLE = "Users"; // Sets up Table of Usernames and Passwords.
+    private static final String COLUMN_USERNAME = "username";
+    private static final String COLUMN_PASSWORD = "password";
+
+    private static final String ITEM_TABLE = "Items"; // Sets up Table of Items, including information for Notifications.
+    private static final String COLUMN_ITEM_NAME = "itemName";
+    private static final String COLUMN_QUANTITY = "quantity";
+    private static final String COLUMN_DATE_MODIFIED = "dateModified";
+    private static final String COLUMN_MONITORED_THRESHOLD = "threshold";
+    private static final String COLUMN_IS_MONITORED = "isMonitored";
+
+    // Creates User Table.
+    private static final String CREATE_USER_TABLE =
+            "CREATE TABLE " + USER_TABLE + " (" +
+                    COLUMN_USERNAME + " TEXT PRIMARY KEY, " +
+                    COLUMN_PASSWORD + " TEXT NOT NULL);";
+
+    // Creates Items Table.
+    private static final String CREATE_ITEM_TABLE =
+            "CREATE TABLE " + ITEM_TABLE + " (" +
+                    COLUMN_ITEM_NAME + " TEXT PRIMARY KEY, " +
+                    COLUMN_QUANTITY + " INTEGER NOT NULL, " +
+                    COLUMN_DATE_MODIFIED + " TEXT NOT NULL, " +
+                    COLUMN_IS_MONITORED + " INTEGER DEFAULT 0, " +
+                    COLUMN_MONITORED_THRESHOLD +" INTEGER DEFAULT 0);";
+
+    public DatabaseHelper(Context context) { // Creates accessible DatabaseHelper for later use.
+        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        db.execSQL(CREATE_USER_TABLE);
+        db.execSQL(CREATE_ITEM_TABLE);
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) { // If database is updated, drops previous Tables.
+        db.execSQL("DROP TABLE IF EXISTS " + USER_TABLE);
+        db.execSQL("DROP TABLE IF EXISTS " + ITEM_TABLE);
+        onCreate(db);
+    }
+
+    public void addUser(String username, String password) { // Inserts a newly registered User to Table.
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_USERNAME, username);
+        values.put(COLUMN_PASSWORD, password);
+        db.insert(USER_TABLE, null, values);
+        db.close();
+    }
+
+    public boolean checkUser(String username, String password) { // Checks if User exists as boolean.
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(USER_TABLE, new String[]{COLUMN_USERNAME},
+                COLUMN_USERNAME + "=? AND " + COLUMN_PASSWORD + "=?",
+                new String[]{username, password}, null, null, null);
+        boolean exists = cursor.getCount() > 0;
+        cursor.close();
+        db.close();
+        return exists;
+    }
+
+    public void addItem(String itemName, int quantity, String dateModified) { // Inserts newly created Item into Items Table.
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_ITEM_NAME, itemName);
+        values.put(COLUMN_QUANTITY, quantity);
+        values.put(COLUMN_DATE_MODIFIED, dateModified);
+
+        long result = db.insert(ITEM_TABLE, null, values); // Inserts item, returns number for check.
+        if (result == -1) {
+            Log.d("DatabaseHelper", "Failed to insert");
+        }
+        else {
+            Log.d("DatabaseHelper", "Inserted row");
+        }
+        db.close();
+    }
+
+    public List<Item> getAllItems() { // Returns a List of Items from Table in Database.
+        List<Item> itemList = new ArrayList<>(); // Creates new List.
+
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        Cursor cursor = db.query(ITEM_TABLE, null, null, null, null, null, null); // Creates Cursor for querying.
+
+        if (cursor.moveToFirst()) {
+            do { // Until there are no more items, add values to ItemList Items.
+                @SuppressLint("Range") String itemName = cursor.getString(cursor.getColumnIndex(COLUMN_ITEM_NAME));
+                @SuppressLint("Range") int quantity = cursor.getInt(cursor.getColumnIndex(COLUMN_QUANTITY));
+                @SuppressLint("Range") String date = cursor.getString(cursor.getColumnIndex(COLUMN_DATE_MODIFIED));
+                @SuppressLint("Range") int lowInventoryThreshold = cursor.getInt(cursor.getColumnIndex(COLUMN_MONITORED_THRESHOLD));
+
+                Item item = new Item(itemName, quantity, date, lowInventoryThreshold);
+                itemList.add(item);
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        db.close();
+        return itemList;
+    }
+
+    public void deleteItem(String itemName) { // Erases items from Database upon call based upon the Item's name.
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete("Items", "itemName = ?", new String[]{itemName});
+        db.close();
+    }
+
+    public boolean itemExists(String itemName) { // Checks whether the item already exists in the Table.
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        String query = "SELECT * FROM Items WHERE itemName = ?";
+        Cursor cursor = db.rawQuery(query, new String[]{itemName});
+
+        boolean exists = (cursor.getCount() > 0);
+        cursor.close();
+        db.close();
+        return exists;
+    }
+
+    public void updateItem(String itemName, int newQuantity, String phoneNumber) { // Updates entries of Items in Database.
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_QUANTITY, newQuantity); // Sets new Quantity from User Input
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        String currentDate = sdf.format(new Date());
+        values.put(COLUMN_DATE_MODIFIED, currentDate); // Sets date of Last Modified to current Date
+
+        db.update(ITEM_TABLE, values, COLUMN_ITEM_NAME + " = ?", new String[]{itemName});
+
+        SmsManager smsManager = SmsManager.getDefault();
+        NotificationManager notificationManager = new NotificationManager(smsManager);
+        int threshold = getLowInventoryThreshold(itemName);
+        notificationManager.notifyLowInventory(itemName, newQuantity, threshold, phoneNumber); // Sends new Quantity of Item to NotificationManager to check if it should notify user.
+
+        db.close();
+    }
+
+    public void addMonitoredItem(String itemName, int threshold) { // Sets Item isMonitored value from 0 to 1 to add to MonitoredItems "list".
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        Cursor cursor = db.query(ITEM_TABLE, null, COLUMN_ITEM_NAME + "=?", new String[]{itemName}, null, null, null); // Creates Cursor for found item.
+
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_IS_MONITORED, 1); // Sets isMonitored to 1(true) from 0(false).
+        values.put(COLUMN_MONITORED_THRESHOLD, threshold); // Adds the low inventory threshold.
+
+        db.update(ITEM_TABLE, values, COLUMN_ITEM_NAME + "=?", new String[]{itemName}); // Updates the item in the Items table.
+
+        cursor.close();
+        db.close();
+    }
+
+    public List<Item> getAllMonitoredItems() { // Populates list with all MonitoredItems.
+        List<Item> monitoredItems = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(ITEM_TABLE, null, COLUMN_IS_MONITORED + "=?", new String[]{"1"}, null, null, null);
+
+        if (cursor.moveToFirst()) {
+            do {
+                @SuppressLint("Range") String itemName = cursor.getString(cursor.getColumnIndex(COLUMN_ITEM_NAME));
+                @SuppressLint("Range") int quantity = cursor.getInt(cursor.getColumnIndex(COLUMN_QUANTITY));
+                @SuppressLint("Range") int threshold = cursor.getInt(cursor.getColumnIndex(COLUMN_MONITORED_THRESHOLD));
+                @SuppressLint("Range") String date = cursor.getString(cursor.getColumnIndex(COLUMN_DATE_MODIFIED));
+                monitoredItems.add(new Item(itemName, quantity, date, threshold));
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        db.close();
+        return monitoredItems; // Returns List of MonitoredItems, Items where isMonitored is set to 1.
+    }
+
+    public boolean isItemMonitored(String itemName) { // Checks if Item is already Monitored.
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(ITEM_TABLE, null, COLUMN_ITEM_NAME + "=? AND " + COLUMN_IS_MONITORED + "=?", new String[]{itemName, "1"}, null, null, null);
+        boolean exists = (cursor.getCount() > 0);
+        cursor.close();
+        db.close();
+        return exists; // Returns true/false based upon results of query.
+    }
+
+    @SuppressLint("Range")
+    public int getLowInventoryThreshold(String itemName) { // Gets the low inventory threshold of each item passed to it.
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT " + COLUMN_MONITORED_THRESHOLD + " FROM " + ITEM_TABLE + " WHERE " + COLUMN_ITEM_NAME + " = ? AND " + COLUMN_IS_MONITORED + "=?", new String[]{itemName, "1"});
+
+        int threshold = -1;
+
+        if (cursor.moveToFirst()) {
+            threshold = cursor.getInt(cursor.getColumnIndex(COLUMN_MONITORED_THRESHOLD));
+        }
+        cursor.close();
+        db.close();
+        return threshold; // Returns value of threshold.
+    }
+
+    public void deleteMonitoredItem(String itemName) { // Deletes MonitoredItem.
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_IS_MONITORED, 0); // Sets isMonitored to 0(false) on the Item, as there is no separate Table.
+        db.update(ITEM_TABLE, values, COLUMN_ITEM_NAME + "=?", new String[]{itemName});
+        db.close();
+    }
+}
+
+    </code></pre>
+  </section>
+
+  <section>
+    <h2>Enhanced: FirestoreInventoryRepository.java</h2>
+    <pre><code class="language-java">
+        package com.example.projectthree;
+
+import android.util.Log;
+
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QuerySnapshot;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+/**
+ * FirestoreInventoryRepository abstracts all Firestore operations
+ * related to inventory items including CRUD, live updates, and threshold monitoring
+ */
+public class FirestoreInventoryRepository {
+
+    private static final String TAG = "FirestoreRepo";
+
+    private final FirebaseFirestore db;
+    private final CollectionReference itemsRef;
+
+    /**
+     * Initializes Firestore instance and reference to the sharded 'inventory' collection
+     * under the provided locationId
+     *
+     * @param locationId - the Firestore document ID for the current location
+     */
+    public FirestoreInventoryRepository(String locationId) {
+        db = FirebaseFirestore.getInstance();
+        itemsRef = db.collection("locations")
+                .document(locationId)
+                .collection("inventory");
+    }
+
+    /**
+     * Adds a new item to Firestore or overwrites it if the item already exists
+     *
+     * @param item - The item to be added
+     */
+    public void addItem(Item item) {
+        itemsRef.document(item.getItemName()).set(item)
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "Item added: " + item.getItemName()))
+                .addOnFailureListener(e -> Log.e(TAG, "Error adding item", e));
+    }
+
+    /**
+     * Updates the quantity and date of an existing item in Firestore
+     *
+     * @param itemName - The name of the item to update
+     * @param newQuantity - The new quantity value to set
+     */
+    public void updateItemQuantity(String itemName, int newQuantity) {
+        DocumentReference itemRef = itemsRef.document(itemName);
+        String currentDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+
+        itemRef.update("quantity", newQuantity, "date", currentDate)
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "Item updated: " + itemName))
+                .addOnFailureListener(e -> Log.e(TAG, "Error updating item", e));
+    }
+
+    /**
+     * Deletes an item from Firestore by its name
+     *
+     * @param itemName - The name of the item to delete
+     */
+    public void deleteItem(String itemName) {
+        itemsRef.document(itemName).delete()
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "Item deleted: " + itemName))
+                .addOnFailureListener(e -> Log.e(TAG, "Error deleting item", e));
+    }
+
+    /**
+     * Attaches a real-time listener to the 'inventory' collection
+     *
+     * @param listener - Firestore EventListener for snapshot updates
+     */
+    public void listenToItems(EventListener<QuerySnapshot> listener) {
+        itemsRef.addSnapshotListener(listener);
+    }
+}
+
+    </code></pre>
+  </section>
+
+  <section>
+    <h2>Original: InventoryActivity.java</h2>
+    <pre><code class="language-java">
+        package com.example.projectthree;
+
+        import android.content.DialogInterface;
+        import android.content.Intent;
+        import android.os.Bundle;
+        import android.text.InputType;
+        import android.util.Log;
+        import android.view.View;
+        import android.widget.Button;
+        import android.widget.EditText;
+        import android.widget.LinearLayout;
+        import android.widget.TextView;
+        import android.widget.Toast;
+        import androidx.appcompat.app.AlertDialog;
+        import androidx.appcompat.app.AppCompatActivity;
+        import java.text.SimpleDateFormat;
+        import java.util.Date;
+        import java.util.Locale;
+        import java.util.List;
+        
+        public class InventoryActivity extends AppCompatActivity {
+        
+            private EditText itemNameEditText;
+            private EditText itemDetailsEditText;
+            private LinearLayout itemListLayout;
+        
+            private DatabaseHelper dbHelper;
+        
+            private final String phoneNumber = "555-123-4567"; // SETS USER PHONE NUMBER.
+        
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                setContentView(R.layout.activity_inventory);
+        
+                itemNameEditText = findViewById(R.id.itemNameEditText);
+                itemDetailsEditText = findViewById(R.id.itemDetailsEditText);
+                itemListLayout = findViewById(R.id.itemListLayout);
+        
+                dbHelper = new DatabaseHelper(this); // Creates instance of DatabaseHelper
+        
+                Button addItemButton = findViewById(R.id.addItemButton);
+                Button updateItemButton = findViewById(R.id.updateItemButton);
+                Button viewNotifsButton = findViewById(R.id.gotoNotifs);
+        
+                addItemButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        addItem();
+                    }
+                });
+        
+                updateItemButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showUpdateItemDialog();
+                    }
+                });
+        
+                viewNotifsButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Intent intent = new Intent(InventoryActivity.this, NotificationActivity.class);
+                        startActivity(intent);
+                    }
+        
+                });
+        
+                loadItemsFromDatabase(); // Displays all information in the Item table within DatabaseHelper upon creation of Activity
+            }
+        
+            private void addItem() {
+                String itemName = itemNameEditText.getText().toString().trim();
+                String itemDetails = itemDetailsEditText.getText().toString().trim();
+                int quantity;
+                String date = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        
+                if (itemName.isEmpty() || itemDetails.isEmpty()) {
+                    Toast.makeText(InventoryActivity.this, "Item info is invalid", Toast.LENGTH_LONG).show();
+                    return;
+                }
+        
+                try {
+                    quantity = Integer.parseInt(itemDetails);
+                } catch (NumberFormatException e) {
+                    return;
+                }
+        
+                if (!dbHelper.itemExists(itemName)) { // If item does not exist yet, adds item to table and layout for instant viewing, then clears textfields.
+                    dbHelper.addItem(itemName, quantity, date);
+        
+                    itemNameEditText.setText("");
+                    itemDetailsEditText.setText("");
+        
+                    addItemToLayout(itemName, quantity, date);
+                }
+                else {
+                    Toast.makeText(InventoryActivity.this, "This item already exists", Toast.LENGTH_SHORT).show();
+                }
+            }
+        
+            private void loadItemsFromDatabase() {
+                List<Item> items = dbHelper.getAllItems();
+                for (Item item : items) { // Calls addItemToLayout() in a for loop until all items from Table are in the layout.
+                    addItemToLayout(item.getItemName(), item.getQuantity(), item.getDate());
+                }
+            }
+        
+            private void addItemToLayout(String itemName, int quantity, String date) {
+        
+                LinearLayout newItemRow = new LinearLayout(this); // Modifies the runtime layout to fit new items.
+        
+                newItemRow.setLayoutParams(new LinearLayout.LayoutParams( // Creates new "row" for items.
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+                newItemRow.setOrientation(LinearLayout.HORIZONTAL);
+        
+                TextView itemNameTextView = new TextView(this); // Creates new TextView for itemName.
+                itemNameTextView.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+                itemNameTextView.setText(itemName);
+        
+                TextView quantityTextView = new TextView(this); // Creates new TextView for quantity.
+                quantityTextView.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+                quantityTextView.setText(String.valueOf(quantity));
+        
+                TextView dateTextView = new TextView(this); // Creates new TextView for lastModified date.
+                dateTextView.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+                dateTextView.setText(date);
+        
+                Button deleteRowBtn = new Button(this); // Creates a delete Button for deletion of items from layout and Table.
+                deleteRowBtn.setText("Delete");
+                deleteRowBtn.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+        
+                deleteRowBtn.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) { // Deletes item associated with itemName from Table and erases from Layout for instant viewing.
+                        dbHelper.deleteItem(itemName);
+                        itemListLayout.removeView(newItemRow);
+                    }
+                });
+        
+                newItemRow.addView(itemNameTextView);
+                newItemRow.addView(quantityTextView);
+                newItemRow.addView(dateTextView);
+                newItemRow.addView(deleteRowBtn);
+        
+                itemListLayout.addView(newItemRow); // Adds new LinearLayout to existing "frame" in activity_inventory.xml.
+            }
+        
+            private void showUpdateItemDialog() { // Creates popup to allow user to modify existing item quantities.
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Update Item");
+        
+                LinearLayout layout = new LinearLayout(this); // Creates small popup LinearLayout.
+                layout.setOrientation(LinearLayout.VERTICAL);
+                layout.setPadding(50, 40, 50, 10);
+        
+                final EditText inputItemName = new EditText(this); // Generates itemName EditText in popup.
+                inputItemName.setHint("Enter item name");
+                layout.addView(inputItemName);
+        
+                final EditText inputQuantity = new EditText(this); // Generates quantity EditText in popup.
+                inputQuantity.setHint("Enter new quantity");
+                inputQuantity.setInputType(InputType.TYPE_CLASS_NUMBER);
+                layout.addView(inputQuantity);
+        
+                builder.setView(layout); // Sets the view of the Alert Dialog builder.
+        
+                builder.setPositiveButton("Update", new DialogInterface.OnClickListener() { // Handles the "yes"/positive button for the Alert, handling modification of item quantity.
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String itemName = inputItemName.getText().toString().trim();
+                        String newQuantityStr = inputQuantity.getText().toString().trim();
+        
+                        if (!itemName.isEmpty() && !newQuantityStr.isEmpty()) {
+                            int newQuantity = Integer.parseInt(newQuantityStr);
+                            dbHelper.updateItem(itemName, newQuantity, phoneNumber);
+                            itemListLayout.removeAllViews();
+                            loadItemsFromDatabase(); // Upon completion, reload layout with new information.
+                        } else {
+                            Toast.makeText(getApplicationContext(), "Please enter valid input", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+        
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() { // If "no"/negative button is pressed, cancel dialog.
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+                builder.show(); // Display Alert dialog.
+            }
+        }
+        
+    </code></pre>
+  </section>
+
+  <section>
+    <h2>Enhanced: InventoryActivity.java</h2>
+    <pre><code class="language-java">
+        package com.example.projectthree;
+
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.telephony.SmsManager;
+import android.text.InputType;
+import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+import android.Manifest;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * InventoryActivity manages core inventory features:
+ * - CRUD operations for inventory database
+ * - Sorting, filtering, searching operations
+ * - Listening for Firestore item updates
+ * - Sending SMS alerts based on user-set thresholds
+ */
+public class InventoryActivity extends AppCompatActivity {
+
+    // UI elements
+    private EditText itemNameEditText;
+    private EditText itemDetailsEditText;
+    private LinearLayout itemListLayout;
+    private Spinner sortSpinner;
+    private Spinner orderSpinner;
+    private boolean isDescending = true;
+
+    // Firebase repository and local cache
+    private FirestoreInventoryRepository repository;
+    private LocationManager locationManager;
+    private final List<Item> itemList = new ArrayList<>();
+    private final Map<String, Item> itemMap = new HashMap<>();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_inventory);
+
+        requestSmsPermission();
+
+        itemNameEditText = findViewById(R.id.itemNameEditText);
+        itemDetailsEditText = findViewById(R.id.itemDetailsEditText);
+        itemListLayout = findViewById(R.id.itemListLayout);
+        sortSpinner = findViewById(R.id.sortSpinner);
+        orderSpinner = findViewById(R.id.orderSpinner);
+        SearchView searchView = findViewById(R.id.searchView);
+
+        locationManager = new LocationManager(this);
+        String locationId = locationManager.getStoredLocationId();
+
+        if (locationId == null) {
+            Toast.makeText(this, "Location not set. Please log in again", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+
+        repository = new FirestoreInventoryRepository(locationId);
+
+        Button logoutButton = findViewById(R.id.logoutButton);
+        Button addItemButton = findViewById(R.id.addItemButton);
+        Button updateItemButton = findViewById(R.id.updateItemButton);
+        Button viewNotifsButton = findViewById(R.id.gotoNotifs);
+
+        viewNotifsButton.setOnClickListener(v -> {
+            startActivity(new Intent(this, NotificationsActivity.class));
+        });
+
+        logoutButton.setOnClickListener(v -> {
+            FirebaseAuth.getInstance().signOut();
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show();
+            finish();
+        });
+
+        addItemButton.setOnClickListener(v -> addItem());
+        updateItemButton.setOnClickListener(v -> showUpdateItemDialog());
+
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.sort_criteria_array, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sortSpinner.setAdapter(adapter);
+
+        sortSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                sortAndDisplayItems();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        ArrayAdapter<CharSequence> orderAdapter = ArrayAdapter.createFromResource(this,
+                R.array.sort_order_array, android.R.layout.simple_spinner_item);
+        orderAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        orderSpinner.setAdapter(orderAdapter);
+
+        orderSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                isDescending = position == 1;
+                sortAndDisplayItems();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                filterAndDisplayItems(query);
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                filterAndDisplayItems(newText);
+                return true;
+            }
+        });
+
+        listenToInventoryChanges();
+    }
+
+    /**
+     * Requests SMS permissions, if not already granted
+     */
+    private void requestSmsPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.SEND_SMS)) {
+                new AlertDialog.Builder(this)
+                        .setTitle("SMS Permission Needed")
+                        .setMessage("This app needs permission to send SMS so we can alert you about low inventory items.")
+                        .setPositiveButton("Allow", (dialog, which) ->
+                                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, 1))
+                        .setNegativeButton("Deny", (dialog, which) ->
+                                Toast.makeText(this, "Permission denied. SMS alerts won't work.", Toast.LENGTH_LONG).show())
+                        .create()
+                        .show();
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.SEND_SMS}, 1);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "SMS permission granted", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "SMS permission denied. You won't receive alerts.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * Listener for Firestore changes
+     */
+    private void listenToInventoryChanges() {
+        repository.listenToItems((snapshots, error) -> {
+            if (error != null || snapshots == null) return;
+
+            itemMap.clear();
+            itemList.clear();
+
+            for (QueryDocumentSnapshot doc : snapshots) {
+                Item item = doc.toObject(Item.class);
+                itemMap.put(item.getItemName(), item);
+                itemList.add(item);
+            }
+
+            sortAndDisplayItems();
+            checkThresholdsAndNotify();
+        });
+    }
+
+    /**
+     * Function for adding items to database. Also adds to activity_inventory.xml layout
+     */
+    private void addItem() {
+        String itemName = itemNameEditText.getText().toString().trim();
+        String itemDetails = itemDetailsEditText.getText().toString().trim();
+        String date = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+
+        if (itemName.isEmpty() || itemDetails.isEmpty()) {
+            Toast.makeText(this, "Item info is invalid", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        int quantity;
+        try {
+            quantity = Integer.parseInt(itemDetails);
+        } catch (NumberFormatException e) {
+            Toast.makeText(this, "Quantity must be a number", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        repository.addItem(new Item(itemName, quantity, date, 0, locationManager.getStoredLocationId()));
+        itemNameEditText.setText("");
+        itemDetailsEditText.setText("");
+    }
+
+
+    /**
+     * Sorts the list of inventory items based on selected criteria
+     * Applies ascending or descending depending on user selection
+     * Refreshes layout with the osrted list
+     */
+    private void sortAndDisplayItems() {
+        String selectedSort = sortSpinner.getSelectedItem() != null ?
+                sortSpinner.getSelectedItem().toString() : "Sort by Name";
+
+        Comparator<Item> comparator;
+        switch (selectedSort) {
+            case "Sort by Quantity":
+                comparator = Comparator.comparingInt(Item::getQuantity);
+                break;
+            case "Sort by Date":
+                comparator = Comparator.comparing(item -> {
+                    try {
+                        return new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(item.getDate());
+                    } catch (Exception e) {
+                        return new Date(0);
+                    }
+                });
+                break;
+            case "Sort by Name":
+            default:
+                comparator = Comparator.comparing(i -> extractNaturalKey(i.getItemName()));
+                break;
+        }
+
+        if (isDescending) comparator = comparator.reversed();
+
+        Collections.sort(itemList, comparator);
+
+        itemListLayout.removeAllViews();
+        for (Item item : itemList) {
+            addItemToLayout(item.getItemName(), item.getQuantity(), item.getDate());
+        }
+    }
+
+    /**
+     * Converts an item name containing digits into a format suitable for natural sorting
+     * Ensures values like "item2" will be correctly ordered before "item10"
+     *
+     * @param input - The original item name
+     * @return - A normalized string key with padded numeric values for sorting
+     */
+    private String extractNaturalKey(String input) {
+        Pattern pattern = Pattern.compile("(\\D*)(\\d+)");
+        Matcher matcher = pattern.matcher(input);
+        if (matcher.matches()) {
+            String prefix = matcher.group(1);
+            int number = Integer.parseInt(matcher.group(2));
+            return String.format("%s%010d", prefix, number);
+        }
+        return input;
+    }
+
+    /**
+     * Filters the invenntory items based on search query (by name)
+     * Matching items are displayed in layout, in sort order
+     *
+     * @param query - Search text entered by user
+     */
+    private void filterAndDisplayItems(String query) {
+        List<Item> filteredList = new ArrayList<>();
+
+        for (Item item : itemList) {
+            if (item.getItemName().toLowerCase().contains(query.toLowerCase())) {
+                filteredList.add(item);
+            }
+        }
+
+        itemListLayout.removeAllViews();
+        for (Item item : filteredList) {
+            addItemToLayout(item.getItemName(), item.getQuantity(), item.getDate());
+        }
+    }
+
+    /**
+     * Dynamically creates and adds a horizontal layout row for an inventory item
+     * Displays the item's name, quantity, and date, and includes a delete button
+     * that removes the item from the Firestore database as well.
+     *
+     * @param itemName - Name of inventory item
+     * @param quantity - Quantity of inventory item
+     * @param date - Datestamp of item's addition/update
+     */
+    private void addItemToLayout(String itemName, int quantity, String date) {
+        LinearLayout newItemRow = new LinearLayout(this);
+        newItemRow.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        newItemRow.setOrientation(LinearLayout.HORIZONTAL);
+
+        TextView itemNameTextView = new TextView(this);
+        itemNameTextView.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        itemNameTextView.setText(itemName);
+
+        TextView quantityTextView = new TextView(this);
+        quantityTextView.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        quantityTextView.setText(String.valueOf(quantity));
+
+        TextView dateTextView = new TextView(this);
+        dateTextView.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        dateTextView.setText(date);
+
+        Button deleteRowBtn = new Button(this);
+        deleteRowBtn.setText("Delete");
+        deleteRowBtn.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        deleteRowBtn.setOnClickListener(v -> repository.deleteItem(itemName));
+
+        newItemRow.addView(itemNameTextView);
+        newItemRow.addView(quantityTextView);
+        newItemRow.addView(dateTextView);
+        newItemRow.addView(deleteRowBtn);
+
+        itemListLayout.addView(newItemRow);
+    }
+
+    /**
+     * Displays a dialog allowing user to update the quantity of an existing item in inventory
+     * Dialog validates the item exists in current inventory and that input is valid
+     * then applies update via Firestore
+     */
+    private void showUpdateItemDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Update Item");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 40, 50, 10);
+
+        final EditText inputItemName = new EditText(this);
+        inputItemName.setHint("Enter item name");
+        layout.addView(inputItemName);
+
+        final EditText inputQuantity = new EditText(this);
+        inputQuantity.setHint("Enter new quantity");
+        inputQuantity.setInputType(InputType.TYPE_CLASS_NUMBER);
+        layout.addView(inputQuantity);
+
+        builder.setView(layout);
+        builder.setPositiveButton("Update", null);
+        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String itemName = inputItemName.getText().toString().trim();
+            String newQuantityStr = inputQuantity.getText().toString().trim();
+
+            if (itemName.isEmpty() || newQuantityStr.isEmpty()) {
+                Toast.makeText(this, "Please enter both name and quantity", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!itemMap.containsKey(itemName)) {
+                Toast.makeText(this, "Item not found in inventory", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            int newQuantity;
+            try {
+                newQuantity = Integer.parseInt(newQuantityStr);
+            } catch (NumberFormatException e) {
+                Toast.makeText(this, "Quantity must be a number", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            repository.updateItemQuantity(itemName, newQuantity);
+            dialog.dismiss();
+        });
+    }
+
+    /**
+     * Retrieves the user who set the notification's phone number and the monitored items
+     * For each monitored item, compares quantity against stored threshold
+     * If quantity is below threshold, send SMS alert to user's phone number
+     */
+    private void checkThresholdsAndNotify() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        String uid = user.getUid();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        String locationId = locationManager.getStoredLocationId();
+        if (locationId == null) return;
+
+        db.collection("locations")
+                .document(locationId)
+                .collection("users")
+                .document(uid)
+                .get()
+                .addOnSuccessListener(userDoc -> {
+                    String phone = userDoc.getString("phoneNumber");
+                    if (phone == null || phone.isEmpty()) {
+                        return;
+                    }
+
+                    db.collection("users")
+                            .document(uid)
+                            .collection("notifications")
+                            .get()
+                            .addOnSuccessListener(snapshot -> {
+
+                                for (DocumentSnapshot doc : snapshot) {
+                                    String itemName = doc.getId();
+                                    Long threshold = doc.getLong("threshold");
+
+                                    if (threshold != null && itemMap.containsKey(itemName)) {
+                                        int quantity = itemMap.get(itemName).getQuantity();
+
+                                        if (quantity <= threshold) {
+                                            sendLowInventorySMS(phone, itemName, quantity);
+                                        }
+                                    } else if (!itemMap.containsKey(itemName)) {
+                                    }
+                                }
+                            })
+                            .addOnFailureListener(e -> Log.e("THRESHOLD_CHECK", "Failed to load monitored notifications", e));
+                })
+                .addOnFailureListener(e -> Log.e("THRESHOLD_CHECK", "Failed to get user phone number", e));
+    }
+
+
+    /**
+     * Sends a low inventory SMS alert to specified phone number using SmsManager
+     * Message includes item name and current quantity
+     * Displays a toast indicating success/failure of message sending
+     *
+     * @param phoneNumber - Recipient's phone number
+     * @param itemName - Monitored item's name
+     * @param quantity - Current quantity of item
+     */
+    private void sendLowInventorySMS(String phoneNumber, String itemName, int quantity) {
+        String message = "Low inventory alert: '" + itemName + "' is now at " + quantity + " units.";
+
+        try {
+            SmsManager smsManager = SmsManager.getDefault();
+            smsManager.sendTextMessage(phoneNumber, null, message, null, null);
+            Toast.makeText(this, "Alert sent for " + itemName, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Failed to send SMS: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+}
+
+    </code></pre>
+  </section>
+
+</body>
+</html>
